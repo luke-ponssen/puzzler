@@ -39,8 +39,24 @@ const playerColors = ["blue", "red", "orange", "yellow", "green", "purple"];
 function randomFromArray(array) {
   return array[Math.floor(Math.random() * array.length)];
 }
+
 function getKeyString(x, y) {
   return `${x}x${y}`;
+}
+
+function getRandomLobby(length) {
+  let result = '';
+  const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ01234567890123456789';
+  const charactersLength = characters.length;
+  let counter = 0;
+  while (counter < length) {
+    if (counter % 4 == 0 && counter != 0) {
+      result += '-'
+    }
+    result += characters.charAt(Math.floor(Math.random() * charactersLength));
+    counter += 1;
+  }
+  return result;
 }
 
 function createName() {
@@ -127,6 +143,8 @@ function getRandomSafeSpot() {
 
 (function () {
 
+  let lobbyId;
+
   let playerId;
   let playerRef;
   let players = {};
@@ -136,6 +154,7 @@ function getRandomSafeSpot() {
 
   const gameContainer = document.querySelector(".game-container");
   const playerNameInput = document.querySelector("#player-name");
+  const playerCodeInput = document.querySelector("#player-code");
   const playerColorButton = document.querySelector("#player-color");
 
 
@@ -190,6 +209,11 @@ function getRandomSafeSpot() {
     new KeyPressListener("ArrowLeft", () => handleArrowPress(-1, 0))
     new KeyPressListener("ArrowRight", () => handleArrowPress(1, 0))
 
+    new KeyPressListener("KeyW", () => handleArrowPress(0, -1))
+    new KeyPressListener("KeyS", () => handleArrowPress(0, 1))
+    new KeyPressListener("KeyA", () => handleArrowPress(-1, 0))
+    new KeyPressListener("KeyD", () => handleArrowPress(1, 0))
+
     const allPlayersRef = firebase.database().ref(`players`);
     const allCoinsRef = firebase.database().ref(`coins`);
 
@@ -197,6 +221,7 @@ function getRandomSafeSpot() {
       //Fires whenever a change occurs
       players = snapshot.val() || {};
       Object.keys(players).forEach((key) => {
+        
         const characterState = players[key];
         let el = playerElements[key];
         // Now update the DOM
@@ -212,6 +237,7 @@ function getRandomSafeSpot() {
     allPlayersRef.on("child_added", (snapshot) => {
       //Fires whenever a new node is added the tree
       const addedPlayer = snapshot.val();
+      if (addedPlayer.lobby == lobbyId) {
       const characterElement = document.createElement("div");
       characterElement.classList.add("Character", "grid-cell");
       if (addedPlayer.id === playerId) {
@@ -236,7 +262,7 @@ function getRandomSafeSpot() {
       const left = 16 * addedPlayer.x + "px";
       const top = 16 * addedPlayer.y - 4 + "px";
       characterElement.style.transform = `translate3d(${left}, ${top}, 0)`;
-      gameContainer.appendChild(characterElement);
+      gameContainer.appendChild(characterElement);}
     })
 
 
@@ -294,6 +320,15 @@ function getRandomSafeSpot() {
       })
     })
 
+    //Updates player name with text input
+    playerCodeInput.addEventListener("change", (e) => {
+      const newCode = e.target.value || getRandomLobby();
+      playerCodeInput.value = newName;
+      playerRef.update({
+        lobby: newCode
+      })
+    })
+
     //Update player color on button click
     playerColorButton.addEventListener("click", () => {
       const mySkinIndex = playerColors.indexOf(players[playerId].color);
@@ -311,6 +346,10 @@ function getRandomSafeSpot() {
   firebase.auth().onAuthStateChanged((user) => {
     if (user) {
       //You're logged in!
+
+      lobbyId = getRandomLobby(8);
+      playerCodeInput.value = lobbyId;
+
       playerId = user.uid;
       playerRef = firebase.database().ref(`players/${playerId}`);
 
@@ -319,8 +358,8 @@ function getRandomSafeSpot() {
 
       const {x, y} = getRandomSafeSpot();
 
-
       playerRef.set({
+        lobby: lobbyId,
         id: playerId,
         name,
         direction: "right",

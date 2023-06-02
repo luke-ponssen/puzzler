@@ -6,7 +6,8 @@ class KeyPressListener {
          if (keySafe) {
             keySafe = false;
             callback();
-         }  
+         }
+         //callback();
       }
    };
    this.keyupFunction = function(event) {
